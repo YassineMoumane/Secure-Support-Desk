@@ -1,0 +1,277 @@
+"""
+Sequence 6 — Structuring & Building Interactive Applications (GUI Actions)
+---------------------------------------------------------------------------
+
+In Sequence 5, you built a GUI that can:
+- search, filter, and sort tickets
+- display ticket details and risk score
+
+In Sequence 6, you add INTERACTIVE actions:
+- New  : create a new ticket from the form
+- Save : write all tickets back to the CSV file
+
+To reduce workload, several parts are PROVIDED:
+- The GUI view (table + details panel) is reused from Sequence 5 (view_layer.build_gui).
+- The form window layout TicketForm.__init__ is PROVIDED.
+- The Edit / Close / Refresh actions are PROVIDED.
+
+You only complete the TODO items listed below.
+
+--------------------------------------------------------------------------
+TODO list (Sequence 6)
+1) next_ticket_id(tickets)
+2) save_all(filename, tickets)
+3) TicketForm.submit(self)
+4) create_ticket_object(tickets, form_data)
+5) on_new()
+6) on_save()
+7) Create the bottom buttons (New/Edit/Close/Save/Refresh)
+
+--------------------------------------------------------------------------
+Dependencies (must be in the SAME folder)
+- seq1_io_csv.py          (Sequence 1)
+- seq2_algorithms.py      (Sequence 2)  [imported by Sequence 3]
+- seq3_ticket_class.py    (Sequence 3)  [Ticket class]
+- seq4_inheritance.py     (Sequence 4)  [make_ticket(row)]
+- seq5_gui_view.py        (Sequence 5)  [build_gui + load_ticket_objects]
+- seq6_gui_actions.py     (this file)
+- tickets.csv             (provided)
+
+Run:
+  python seq6_run.py
+
+Important:
+- tickets.csv must be in the same folder as the .py files.
+- Do not use f-strings in this sequence (use string concatenation).
+"""
+
+import datetime
+import tkinter as tk
+from tkinter import ttk, messagebox
+
+import seq1_io_csv as io_csv
+import seq4_inheritance as inh
+import seq5_gui_view as view_layer
+
+CSV_HEADERS = view_layer.CSV_HEADERS
+
+
+def next_ticket_id(tickets):
+    """
+    Generate a new unique ticket_id for a NEW ticket.
+    See detailed rules in the project description.
+    """
+    if not tickets:
+      return "T-0001"
+    max_num = 0
+    for ticket in tickets:
+        ticket_id = ticket.get_id()
+        try:
+            num = int(ticket_id.split("-")[1])
+            if num > max_num:
+                max_num = num
+
+        except(IndexError,ValueError):
+            continue
+    next_num = max_num +1
+    return "T-" + str(next_num).zfill(4)
+
+
+
+def save_all(filename, tickets):
+    """
+    Save ALL Ticket objects to the CSV file (rewrite file).
+    """
+    rows = [ticket.to_row() for ticket in tickets]
+    io_csv.save_rows(filename, rows, CSV_HEADERS)
+
+
+
+def create_ticket_object(tickets, form_data):
+    """
+    Build a NEW Ticket object from form input (New ticket form).
+    Rules:
+      - id from next_ticket_id(tickets)
+      - created_date = today (YYYY-MM-DD)
+      - status = OPEN
+      - create object using inh.make_ticket(row_dict)
+    """
+    today = datetime.date.today().strftime("%Y-%m-%d")
+
+    row_dict = {
+        "ticket_id":next_ticket_id(tickets),
+        "type": form_data.get("type","INCIDENT"),
+        "title": form_data.get("title",""),
+        "description": form_data.get("description",""),
+        "priority": form_data.get("priority","3"),
+        "status": "OPEN",
+        "department":form_data.get("department",""),
+        "assignee": form_data.get("assignee", ""),
+        "created_date":today,
+        "tags": form_data.get("tags", "")
+
+    }
+
+    return  inh.make_ticket(row_dict)
+
+class TicketForm:
+    """Ticket entry form. __init__ is provided, submit() is TODO."""
+
+    def __init__(self, parent, title, ticket_obj, on_submit):
+        self.ticket_obj = ticket_obj
+        self.on_submit = on_submit
+
+        self.win = tk.Toplevel(parent)
+        self.win.title(title)
+        self.win.transient(parent)
+        self.win.grab_set()
+
+        frm = ttk.Frame(self.win, padding=10)
+        frm.pack(fill="both", expand=True)
+
+        data = None
+        if ticket_obj is not None:
+            data = ticket_obj.to_row()
+
+        self.type_var = tk.StringVar(value=(data["type"] if data else "INCIDENT"))
+        self.priority_var = tk.StringVar(value=(data["priority"] if data else "3"))
+        self.status_var = tk.StringVar(value=(data["status"] if data else "OPEN"))
+        self.dept_var = tk.StringVar(value=(data["department"] if data else "IT"))
+        self.assignee_var = tk.StringVar(value=(data["assignee"] if data else ""))
+        self.tags_var = tk.StringVar(value=(data["tags"] if data else ""))
+        self.title_var = tk.StringVar(value=(data["title"] if data else ""))
+
+        ttk.Label(frm, text="Type:").grid(row=0, column=0, sticky="w")
+        ttk.Combobox(frm, textvariable=self.type_var,
+                     values=["INCIDENT", "REQUEST", "ALERT"],
+                     state="readonly", width=16).grid(row=0, column=1, sticky="w", padx=(6, 18))
+
+        ttk.Label(frm, text="Priority (1-5):").grid(row=0, column=2, sticky="w")
+        ttk.Combobox(frm, textvariable=self.priority_var,
+                     values=["1", "2", "3", "4", "5"],
+                     state="readonly", width=6).grid(row=0, column=3, sticky="w", padx=(6, 0))
+
+        ttk.Label(frm, text="Status:").grid(row=1, column=0, sticky="w", pady=(8, 0))
+        ttk.Combobox(frm, textvariable=self.status_var,
+                     values=["OPEN", "IN_PROGRESS", "CLOSED"],
+                     state="readonly", width=16).grid(row=1, column=1, sticky="w", padx=(6, 18), pady=(8, 0))
+
+        ttk.Label(frm, text="Department:").grid(row=1, column=2, sticky="w", pady=(8, 0))
+        ttk.Entry(frm, textvariable=self.dept_var, width=18).grid(row=1, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
+
+        ttk.Label(frm, text="Assignee:").grid(row=2, column=0, sticky="w", pady=(8, 0))
+        ttk.Entry(frm, textvariable=self.assignee_var, width=18).grid(row=2, column=1, sticky="w", padx=(6, 18), pady=(8, 0))
+
+        ttk.Label(frm, text="Tags (use |):").grid(row=2, column=2, sticky="w", pady=(8, 0))
+        ttk.Entry(frm, textvariable=self.tags_var, width=18).grid(row=2, column=3, sticky="w", padx=(6, 0), pady=(8, 0))
+
+        ttk.Label(frm, text="Title:").grid(row=3, column=0, sticky="w", pady=(8, 0))
+        ttk.Entry(frm, textvariable=self.title_var, width=56).grid(row=3, column=1, columnspan=3, sticky="w", padx=(6, 0), pady=(8, 0))
+
+        ttk.Label(frm, text="Description:").grid(row=4, column=0, sticky="nw", pady=(8, 0))
+        self.desc = tk.Text(frm, width=60, height=8, wrap="word")
+        self.desc.grid(row=4, column=1, columnspan=3, sticky="w", padx=(6, 0), pady=(8, 0))
+        if data:
+            self.desc.insert("1.0", data["description"])
+
+        btns = ttk.Frame(frm)
+        btns.grid(row=5, column=0, columnspan=4, sticky="e", pady=(10, 0))
+        ttk.Button(btns, text="Cancel", command=self.win.destroy).pack(side="right", padx=6)
+        ttk.Button(btns, text="Save", command=self.submit).pack(side="right")
+
+    def submit(self):
+        """Collect data from widgets, call on_submit, close window."""
+        form_data = {
+          
+        "type": self.type_var.get(),
+        "priority": self.priority_var.get(),
+        "status": self.status_var.get(),
+        "department":self.dept_var.get(),
+        "assignee": self.assignee_var.get(),
+        "tags": self.tags_var.get(),
+        "title": self.title_var.get(),
+        "description": self.desc.get("1.0", tk.END).strip()
+
+            }
+        if not form_data ["title"]:
+            messagebox.showerror("Error", "Title cannot be empty")
+            return
+
+        if not form_data ["description"]:
+            messagebox.showerror("Error", "Description cannot be empty")
+            return
+
+        if not form_data ["department"]:
+            messagebox.showerror("Error", "department cannot be empty")
+            return
+        
+        self.on_submit(self.ticket_obj, form_data)
+         
+        self.win.destroy()
+
+def main():
+    filename = "tickets.csv"
+    tickets = view_layer.load_ticket_objects(filename)
+
+    root = tk.Tk()
+    root.title("Secure Support Desk — Sequence 6")
+
+    ui = view_layer.build_gui(root, tickets)
+
+    bottom = ttk.Frame(root, padding=8)
+    bottom.pack(fill="x")
+
+    def selected_ticket():
+        return ui["selected_ticket"]()
+
+    def on_submit_new(ticket_obj, form_data):
+        new_ticket = create_ticket_object(tickets, form_data)
+        if new_ticket is not None:
+            tickets.append(new_ticket)
+        ui["apply"]()
+
+    def on_submit_edit(ticket_obj, form_data):
+        ticket_obj.set_fields_from_form(form_data)
+        ui["apply"]()
+
+    def on_new():
+        TicketForm(root, "New Ticket", None, on_submit_new)
+
+    def on_edit():
+        t = selected_ticket()
+        if t is None:
+            messagebox.showwarning("Edit", "Select a ticket first.")
+            return
+        TicketForm(root, "Edit Ticket", t, on_submit_edit)
+
+    def on_close():
+        t = selected_ticket()
+        if t is None:
+            messagebox.showwarning("Close", "Select a ticket first.")
+            return
+        t.close()
+        ui["apply"]()
+
+    def on_save():
+       save_all(filename, tickets)
+       messagebox.showinfo("Save","Ticket saved successufully!")
+
+    def on_refresh():
+        tickets[:] = view_layer.load_ticket_objects(filename)
+        ui["all_tickets"] = tickets
+        ui["apply"]()
+
+    # Bottom action buttons
+    # Provided:
+    ttk.Button(bottom, text="New", command=on_new).pack(side="left")
+    ttk.Button(bottom, text="Edit", command=on_edit).pack(side="left", padx=6)
+
+    ttk.Button(bottom, text="Close", command=on_close).pack(side="left")
+    ttk.Button(bottom, text="Save", command=on_save).pack(side="left", padx=6)
+    ttk.Button(bottom, text="Refresh", command=on_refresh).pack(side="left", padx=6)
+
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
