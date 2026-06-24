@@ -1,0 +1,221 @@
+"""
+Sequence 2 — Assert Statements + Searching & Sorting + Recursion
+----------------------------------------------------------------
+
+In this sequence, you still work with CSV rows as dictionaries (dict).
+Later, you will convert these rows into Ticket objects (OOP), but not yet.
+
+A row dictionary looks like this (values are strings because they come from a CSV file):
+  {
+    "ticket_id": "T-0001",
+    "type": "ALERT",
+    "title": "...",
+    "description": "...",
+    "priority": "4",
+    "status": "OPEN",
+    "department": "IT",
+    "assignee": "Sam",
+    "created_date": "2026-01-10",
+    "tags": "auth|bruteforce"
+  }
+
+You must implement:
+1) assert_row(row)
+2) keyword_match(row, keyword)
+3) filter_rows(rows, keyword, status_filter, priority_filter)
+4) recursive_count_tags(tag_tree, target)
+
+To reduce the workload, sort_rows(rows, sort_mode) is PROVIDED (no TODO there).
+"""
+
+VALID_STATUSES = ["OPEN", "IN_PROGRESS", "CLOSED"]
+VALID_TYPES = ["INCIDENT", "REQUEST", "ALERT"]
+
+STATUS_ORDER = {"OPEN": 2, "IN_PROGRESS": 1, "CLOSED": 0}
+
+
+def assert_row(row):
+    """
+    Purpose:
+      Validate one row using assert statements.
+
+    Input:
+      - row (dict)
+
+    Output:
+      - None
+
+    Required rules:
+      - row["type"] must be one of: INCIDENT, REQUEST, ALERT
+      - row["status"] must be one of: OPEN, IN_PROGRESS, CLOSED
+      - row["priority"] must be an integer between 1 and 5 (inclusive)
+
+    Notes:
+      - CSV values are strings, so you will likely need int(...).
+      - If a rule fails, an AssertionError should occur.
+    """
+    assert row  is not None, "Row  cannot be None"
+    required_keys = ["type", "status", "priority"]
+    for  key  in  required_keys:
+        assert key in row, f"missing key  required: '{key}'"
+
+    ticket_type = row["type"]
+    assert ticket_type in VALID_TYPES, f"invalid type '{key}'. must be one of: {VALID_TYPES}"
+
+    status = row["status"]
+    assert status in VALID_STATUSES, f"invalid type '{status}'. must be one of: {VALID_STATUSES}"
+
+    try:
+        priority = int(row["priority"])
+        assert 1 <= priority <= 5, f"prioty  must  be between  1 and 5. {priority}"
+    except ValueError:
+            assert False, f"priority  must valid integer: {row['priority']}"
+    except TypeError:
+           assert False, f"priority  must valid integer: {type(row['priority'])}"
+
+
+
+def keyword_match(row, keyword):
+    """
+    Purpose:
+      Check if a keyword is found in the row (case-insensitive).
+
+    Inputs:
+      - row (dict)
+      - keyword (str)
+
+    Output:
+      - True or False
+
+    Rules:
+      - If keyword is empty (""), return True.
+      - Otherwise, return True if keyword appears in:
+        ticket_id OR title OR description OR tags
+    """
+    if not keyword or keyword == "":
+        return True
+    keyword_lower = keyword.lower()
+
+    field_to_check = ["ticket_id", "title", "description", "tags"]
+    
+    for field in  field_to_check:
+        if field in row and row[field] is  not None:
+            field_value = str(row[field]).lower()
+            if keyword_lower in field_value:
+                return True
+    return False
+
+
+def filter_rows(rows, keyword, status_filter, priority_filter):
+    """
+    Purpose:
+      Filter a list of row dictionaries using keyword, status, and priority.
+
+    Inputs:
+      - rows (list of dict)
+      - keyword (str)
+      - status_filter (str): "ALL" or one status
+      - priority_filter (str): "ALL" or "1".."5"
+
+    Output:
+      - new list of dict (filtered)
+
+    Required behavior:
+      1) Keep only rows that match keyword_match(row, keyword)
+      2) If status_filter != "ALL", keep only rows with that status
+      3) If priority_filter != "ALL", keep only rows with that priority
+    """
+    filtred_rows = []
+
+    for row in  rows:
+        if not  keyword_match(row,keyword):
+            continue
+
+        if status_filter != "ALL":
+            if "status" not in row or row["status"] != status_filter:
+                continue
+
+        if priority_filter != "ALL":
+            if "priority" not in row or row["priority"] != priority_filter:
+                continue
+
+        filtred_rows.append(row)
+ 
+    return filtred_rows
+
+
+def sort_rows(rows, sort_mode):
+    """
+    PROVIDED (no TODO).
+
+    Inputs:
+      - rows (list of dict)
+      - sort_mode (str): DATE, PRIORITY, STATUS, ID
+
+    Output:
+      - new list of dict (sorted)
+
+    Rules:
+      - DATE: newest created_date first
+      - PRIORITY: highest priority first
+      - STATUS: OPEN > IN_PROGRESS > CLOSED
+      - ID: ascending
+    """
+    out = list(rows)
+
+    def key_date(x):
+        return x.get("created_date") or ""
+
+    def key_priority(x):
+        try:
+            return int(x.get("priority"))
+        except Exception:
+            return -1
+
+    def key_status(x):
+        s = (x.get("status") or "").strip().upper()
+        return STATUS_ORDER.get(s, -1)
+
+    def key_id(x):
+        return x.get("ticket_id") or ""
+
+    if sort_mode == "DATE":
+        out.sort(key=key_date, reverse=True)
+    elif sort_mode == "PRIORITY":
+        out.sort(key=key_priority, reverse=True)
+    elif sort_mode == "STATUS":
+        out.sort(key=key_status, reverse=True)
+    else:
+        out.sort(key=key_id)
+
+    return out
+
+
+def recursive_count_tags(tag_tree, target):
+    """
+    Purpose:
+      Use recursion to count how many times a target tag appears
+      in a nested list structure.
+
+    Inputs:
+      - tag_tree: a nested list of strings/lists
+      - target (str)
+
+    Output:
+      - int count
+
+    Example:
+      tag_tree = ["auth", ["vpn", "access"], "malware"]
+      recursive_count_tags(tag_tree, "vpn") returns 1
+    """
+    if isinstance(tag_tree, str):
+        return 1 if  tag_tree == target else 0
+
+    if not  tag_tree:
+        return 0
+
+    count = 0
+    for element in  tag_tree:
+        count += recursive_count_tags(element, target)
+
+    return count
