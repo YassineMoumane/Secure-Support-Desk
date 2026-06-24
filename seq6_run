@@ -1,0 +1,14 @@
+"""
+Sequence 6 — Runner file (provided)
+
+Run:
+  python seq6_run.py
+"""
+
+import seq6_gui_actions as seq6
+
+def main():
+    seq6.main()
+
+if __name__ == "__main__":
+    main()
