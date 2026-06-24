@@ -12,3 +12,4 @@ becomes easier to understand and maintain. The goal is to practice real-world pr
 organizing data, reusing functions from earlier work, and connecting Python logic to a graphical
 interface. By the end, you will have a functional mini tool similar to what an IT or security team
 could use to track incidents and requests.
+the porject made from 3 march to 17 april 2026
