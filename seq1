@@ -1,0 +1,101 @@
+
+
+import csv
+import os
+from tkinter.filedialog import Directory
+
+
+def ensure_csv(filename, headers):
+   
+    try:
+        if not os.path.exists(filename):
+            with open(filename, 'w', encoding='utf-8', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=headers)
+                writer.writeheader()
+            print(f"file '{filename}' created successfully with  headers: {headers}")
+        else:
+
+
+         pass
+
+    except Exception as e :
+        print(f"error ensuring csv file : {e}")
+
+    pass
+
+
+def load_rows(filename):
+   
+    try:
+        if not os.path.exists(filename):
+            print(f"File '{filename}' does not exist.")
+            return[]
+
+        rows=[]
+
+        with open(filename, 'r', encoding='utf-8') as  f:
+            reader = csv.DictReader(f)
+            
+            if reader.fieldnames  is None:
+                print (f"File '{filename}' has no header or empty")
+                return[]
+
+            for row  in  reader:
+                cleaned_row = {key: value.strip() if isinstance(value, str) else value for 
+                              key, value in row.items()}
+                rows.append(cleaned_row)
+
+            print(f"successfully loaded {len(rows)} rows from '{filename}'")
+            return rows
+
+    except FileNotFoundError:
+        print(f"File '{filename}' not found ")
+    except PermissionError:
+        print(f"Premission denied when trying to read '{filename}'")
+    except csv.Error as e :
+        print(f"csv parsing error in '{filename}': {e}")
+    except Exception as e :
+        print(f"error: unexpected error  reading '{filename}': {e}")
+
+
+
+    return []
+
+
+def save_rows(filename, rows, headers):
+  
+    try:
+        if not headers:
+            print ("headers list  is empty. cannot write csv file.")
+            return
+
+        directory = os.path.dirname(filename)
+        if directory and not os.path.exists(directory):
+            try:
+                os.makedirs(directory)
+            except Exception as e:
+                print(f"error creating directory{directory}: {e}")
+                return
+
+        with open(filename, 'w', newline='', encoding='utf-8') as f:
+            writer= csv.DictWriter(f,fieldnames=headers)
+            writer.writeheader()
+
+            if rows:
+                writer.writerows(rows)
+                print(f"Successfully saved {len(rows)} rows to  '{filename}'")
+            else:
+                print(f"created empty csv file '{filename}' with headers only")
+
+    except FileNotFoundError:
+        print(f"cannot create file  '{filename}' check  is the path  file  is valid  ")
+    except PermissionError:
+        print(f"Premission denied when trying to write to '{filename}'")
+    except csv.Error as e :
+        print(f"csv writing error in '{filename}': {e}")
+    except TypeError as e :
+        print(f"data type  error when  writing to '{filename}': {e}")
+    except Exception as e :
+        print(f"error: unexpected error  writing to  '{filename}': {e}")
+
+
