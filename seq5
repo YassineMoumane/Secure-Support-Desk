@@ -1,0 +1,229 @@
+"""
+Sequence 5 — Tkinter GUI View (SOLUTION)
+---------------------------------------
+This solution completes all TODOs from seq5_gui_view.py.
+
+Dependencies (must be in same folder):
+- seq1_io_csv.py
+- seq2_algorithms.py
+- seq3_ticket_class.py
+- seq4_inheritance.py
+"""
+
+import tkinter as tk
+from tkinter import ttk
+
+import seq1_io_csv as io_csv
+import seq2_algorithms as alg
+import seq4_inheritance as inh
+
+CSV_HEADERS = [
+    "ticket_id","type","title","description","priority","status",
+    "department","assignee","created_date","tags"
+]
+
+STATUS_ORDER = {"OPEN": 2, "IN_PROGRESS": 1, "CLOSED": 0}
+
+
+def load_ticket_objects(filename):
+    io_csv.ensure_csv(filename, CSV_HEADERS)
+    rows = io_csv.load_rows(filename)
+
+    tickets = []
+    for row in rows:
+        try:
+            alg.assert_row(row)
+            t = inh.make_ticket(row)
+            tickets.append(t)
+        except Exception:
+            # Skip invalid rows
+            pass
+    return tickets
+
+
+def filter_and_sort_tickets(tickets, keyword, status_filter, priority_filter, sort_mode):
+    # 1) filter
+    filtered = []
+    for t in tickets:
+        if not t.matches(keyword):
+            continue
+        if status_filter != "ALL" and t.get_status() != status_filter:
+            continue
+        if priority_filter != "ALL" and str(t.get_priority()) != priority_filter:
+            continue
+        filtered.append(t)
+
+    # 2) sort
+    view = list(filtered)
+
+    if sort_mode == "DATE":
+        view.sort(key=lambda x: x.get_created_date(), reverse=True)
+    elif sort_mode == "PRIORITY":
+        view.sort(key=lambda x: x.get_priority(), reverse=True)
+    elif sort_mode == "STATUS":
+        view.sort(key=lambda x: STATUS_ORDER.get(x.get_status(), -1), reverse=True)
+    else:
+        view.sort(key=lambda x: x.get_id())
+
+    return view
+
+
+def refresh_table(tree, tickets_view):
+    # clear
+    for item in tree.get_children():
+        tree.delete(item)
+
+    # insert
+    for t in tickets_view:
+        row = t.to_row()
+        tree.insert("", "end", values=(
+            t.get_id(),
+            t.get_type(),
+            str(t.get_priority()),
+            t.get_status(),
+            row.get("department", ""),
+            row.get("assignee", ""),
+            t.get_created_date()
+        ))
+
+
+def build_gui(root, tickets):
+    ui = {}
+    ui["all_tickets"] = tickets
+
+    # ---------------- Top bar ----------------
+    top = ttk.Frame(root, padding=8)
+    top.pack(fill="x")
+
+    ttk.Label(top, text="Search:").pack(side="left")
+    search_var = tk.StringVar(value="")
+    ttk.Entry(top, textvariable=search_var, width=24).pack(side="left", padx=(6, 12))
+
+    ttk.Label(top, text="Status:").pack(side="left")
+    status_var = tk.StringVar(value="ALL")
+    ttk.Combobox(top, textvariable=status_var,
+                 values=["ALL","OPEN","IN_PROGRESS","CLOSED"],
+                 state="readonly", width=12).pack(side="left", padx=(6, 12))
+
+    ttk.Label(top, text="Priority:").pack(side="left")
+    priority_var = tk.StringVar(value="ALL")
+    ttk.Combobox(top, textvariable=priority_var,
+                 values=["ALL","1","2","3","4","5"],
+                 state="readonly", width=6).pack(side="left", padx=(6, 12))
+
+    ttk.Label(top, text="Sort:").pack(side="left")
+    sort_var = tk.StringVar(value="DATE")
+    ttk.Combobox(top, textvariable=sort_var,
+                 values=["DATE","PRIORITY","STATUS","ID"],
+                 state="readonly", width=10).pack(side="left", padx=(6, 12))
+
+    # ---------------- Middle layout ----------------
+    mid = ttk.Frame(root, padding=8)
+    mid.pack(fill="both", expand=True)
+
+    left = ttk.Frame(mid)
+    left.pack(side="left", fill="both", expand=True)
+
+    cols = ("ticket_id","type","priority","status","department","assignee","created_date")
+    tree = ttk.Treeview(left, columns=cols, show="headings", height=14)
+    for c in cols:
+        tree.heading(c, text=c)
+        tree.column(c, anchor="w", width=120)
+    tree.column("ticket_id", width=90)
+    tree.column("priority", width=70)
+    tree.column("status", width=120)
+    tree.column("created_date", width=120)
+    tree.pack(fill="both", expand=True)
+
+    right = ttk.Frame(mid, width=360)
+    right.pack(side="right", fill="y", padx=(12, 0))
+
+    ttk.Label(right, text="Ticket Details", font=("Segoe UI", 11, "bold")).pack(anchor="w")
+    details = tk.Text(right, width=44, height=18, wrap="word")
+    details.pack(fill="both", expand=False, pady=(6, 10))
+    details.configure(state="disabled")
+
+    ttk.Label(right, text="Risk score:").pack(anchor="w")
+    risk_var = tk.StringVar(value="")
+    ttk.Label(right, textvariable=risk_var).pack(anchor="w")
+
+    # ---------------- Helpers ----------------
+    def selected_ticket():
+        sel = tree.selection()
+        if not sel:
+            return None
+        values = tree.item(sel[0], "values")
+        if not values:
+            return None
+        tid = values[0]
+        for t in ui["all_tickets"]:
+            if t.get_id() == tid:
+                return t
+        return None
+
+    def show_details(t):
+        details.configure(state="normal")
+        details.delete("1.0", "end")
+
+        if t is None:
+            details.insert("end", "Select a ticket to view details.")
+            risk_var.set("")
+        else:
+            row = t.to_row()
+
+            lines = []
+            lines.append("ID: " + t.get_id())
+            lines.append("Type: " + t.get_type())
+            lines.append("Priority: " + str(t.get_priority()))
+            lines.append("Status: " + t.get_status())
+            lines.append("Department: " + row.get("department", ""))
+
+            ass = row.get("assignee", "")
+            if ass == "":
+                ass = "(none)"
+            lines.append("Assignee: " + ass)
+
+            lines.append("Created date: " + t.get_created_date())
+
+            tags = row.get("tags", "")
+            if tags == "":
+                tags = "(none)"
+            lines.append("Tags: " + tags)
+
+            lines.append("")
+            lines.append("Title: " + row.get("title",""))
+            lines.append("")
+            lines.append("Description:")
+            lines.append(row.get("description",""))
+
+            details.insert("end", "\n".join(lines))
+            risk_var.set(str(t.risk_score()))
+
+        details.configure(state="disabled")
+
+    def apply():
+        view = filter_and_sort_tickets(
+            ui["all_tickets"],
+            search_var.get(),
+            status_var.get(),
+            priority_var.get(),
+            sort_var.get()
+        )
+        refresh_table(tree, view)
+        show_details(None)
+
+    def on_select(event=None):
+        show_details(selected_ticket())
+
+    ttk.Button(top, text="Apply", command=apply).pack(side="left")
+
+    tree.bind("<<TreeviewSelect>>", on_select)
+
+    # Initial load
+    apply()
+
+    ui["apply"] = apply
+    ui["selected_ticket"] = selected_ticket
+    ui["tree"] = tree
+
+    return ui
