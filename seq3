@@ -1,0 +1,128 @@
+"""
+Sequence 3 — Ticket Class (SOLUTION)
+-----------------------------------
+This solution completes all TODOs in seq3_ticket_class.py.
+
+Note:
+- This file imports seq2_algorithms (Sequence 2) for validation rules.
+"""
+
+import seq2_algorithms as alg
+
+
+class Ticket:
+    def __init__(self, ticket_id, ttype, title, description, priority,
+                 status, department, assignee, created_date, tags):
+
+        self._ticket_id = str(ticket_id).strip()
+        self._type = str(ttype).strip().upper()
+        self._title = str(title).strip()
+        self._description = str(description).strip()
+
+        # priority is stored as int inside the object
+        self._priority = int(priority)
+
+        self._status = str(status).strip().upper()
+        self._department = str(department).strip()
+        self._assignee = str(assignee).strip()
+        self._created_date = str(created_date).strip()
+        self._tags = str(tags).strip()
+
+        # Validation rules (assert)
+        assert self._type in alg.VALID_TYPES, "Invalid type"
+        assert self._status in alg.VALID_STATUSES, "Invalid status"
+        assert 1 <= self._priority <= 5, "Invalid priority"
+
+    # ----------------------
+    # Getters
+    # ----------------------
+    def get_id(self):
+        return self._ticket_id
+
+    def get_type(self):
+        return self._type
+
+    def get_priority(self):
+        return self._priority
+
+    def get_status(self):
+        return self._status
+
+    def get_created_date(self):
+        return self._created_date
+
+    # ----------------------
+    # Behaviors
+    # ----------------------
+    def matches(self, keyword):
+        k = str(keyword).strip().lower()
+        if k == "":
+            return True
+
+        text = (self._ticket_id + " " + self._title + " " + self._description + " " + self._tags).lower()
+        return k in text
+
+    def close(self):
+        self._status = "CLOSED"
+
+    def risk_score(self):
+        base = self._priority * 10
+        if self._type == "INCIDENT":
+            return base + 20
+        if self._type == "ALERT":
+            return base + 10
+        return base
+
+    # ----------------------
+    # CSV conversion
+    # ----------------------
+    def to_row(self):
+        return {
+            "ticket_id": self._ticket_id,
+            "type": self._type,
+            "title": self._title,
+            "description": self._description,
+            "priority": str(self._priority),  # CSV should store priority as string
+            "status": self._status,
+            "department": self._department,
+            "assignee": self._assignee,
+            "created_date": self._created_date,
+            "tags": self._tags
+        }
+
+    @staticmethod
+    def from_row(row):
+        # Validate using Sequence 2
+        alg.assert_row(row)
+
+        return Ticket(
+            row.get("ticket_id") or "",
+            row.get("type") or "INCIDENT",
+            row.get("title") or "",
+            row.get("description") or "",
+            row.get("priority") or "1",
+            row.get("status") or "OPEN",
+            row.get("department") or "",
+            row.get("assignee") or "",
+            row.get("created_date") or "",
+            row.get("tags") or ""
+        )
+
+    # ----------------------
+    # Helper for Sequence 6
+    # ----------------------
+    def set_fields_from_form(self, data):
+        # Update editable fields (do not change id/date)
+        self._type = str(data.get("type")).strip().upper()
+        self._priority = int(data.get("priority"))
+        self._status = str(data.get("status")).strip().upper()
+        self._department = str(data.get("department")).strip()
+        self._assignee = str(data.get("assignee")).strip()
+        self._tags = str(data.get("tags")).strip()
+        self._title = str(data.get("title")).strip()
+        self._description = str(data.get("description")).strip()
+
+        # Validate again
+        assert self._type in alg.VALID_TYPES, "Invalid type"
+        assert self._status in alg.VALID_STATUSES, "Invalid status"
+        assert 1 <= self._priority <= 5, "Invalid priority"
