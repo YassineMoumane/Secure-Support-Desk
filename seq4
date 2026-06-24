@@ -1,0 +1,26 @@
+"""
+Sequence 4: Inheritance + Polymorphism (SOLUTION)
+"""
+from seq3_ticket_class import Ticket
+class IncidentTicket(Ticket):
+    def risk_score(self):
+        return Ticket.risk_score(self) + 20
+
+class AlertTicket(Ticket):
+    def risk_score(self):
+        return Ticket.risk_score(self) + 10
+
+
+class RequestTicket(Ticket):
+    def risk_score(self):
+        return Ticket.risk_score(self) + 0
+
+def make_ticket(row):
+    t = (row.get("type") or "").strip().upper()
+    if t == "INCIDENT":
+        return IncidentTicket.from_row(row)
+    if t == "ALERT":
+        return AlertTicket.from_row(row)
+    if t == "REQUEST":
+        return RequestTicket.from_row(row)
+    return Ticket.from_row(row)
